@@ -103,7 +103,12 @@ local function dropoff(all)
 	for i = 1, 16 do
 		if turtle.getItemDetail(i) and not (turtle.getItemDetail(i).name == "minecraft:bucket" and all) then
 			turtle.select(i)
-			turtle.drop(64)
+			-- put fuel in fuel chest if possible
+			if turtle.refuel(0) then
+				if not turtle.dropUp(64) then turtle.drop(64) end
+			else
+				turtle.drop(64)
+			end
 		end
 	end
 end
@@ -144,9 +149,9 @@ if config.get("host") and config.get("dropoff") and config.get("swarmname") then
 				-- check if turtle has enough fuel
 				local cpos = go.getPos()
 				local needed = config.get("fuelbuffer",100)
-				needed = needed + go.fuelTo(shaft.x, 64, shaft.z)
+				needed = needed + go.fuelTo(shaft.x, 64, shaft.z+2)
 				needed = needed + 70 * 2 -- for actual mining - assume 70 depth (for extra buffer)
-				needed = needed + go.fuelTo(config.get("dropoff"),{x=shaft.x,y=64,z=shaft.z})
+				needed = needed + go.fuelTo(config.get("dropoff"),{x=shaft.x,y=64,z=shaft.z+2})
 				if turtle.getFuelLevel() < needed then
 					if not go.canReach(config.get("dropoff")) then
 						print("Please add fuel!")
@@ -178,7 +183,7 @@ if config.get("host") and config.get("dropoff") and config.get("swarmname") then
 					dropoff()
 				end
 				print("Going to shaft location")
-				go.goto(shaft.x,64,shaft.z)
+				go.goto(shaft.x,64,shaft.z+2)
 				config.set("state","mining")
 			end
 		end
