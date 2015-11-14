@@ -101,7 +101,7 @@ end
 
 local function dropoff(all)
 	for i = 1, 16 do
-		if turtle.getItemDetail(i) and (turtle.getItemDetail(i).name == "minecraft:bucket" or all) then
+		if turtle.getItemDetail(i) and (turtle.getItemDetail(i).name ~= "minecraft:bucket" or all) then
 			turtle.select(i)
 			-- put fuel in fuel chest if possible
 			if turtle.refuel(0) then
