@@ -53,6 +53,7 @@ if h then
 		fs.copy(".sq/miner","disk/miner")
 		fs.copy(".sq/json","disk/json")
 		fs.copy(".sq/swarm","disk/swarm")
+		config.set("dropoff",{x=0,y=64,z=-3,f=2})
 		local f = fs.open("disk/startup","w")
 		f.write(deploy_code)
 		f.close()
