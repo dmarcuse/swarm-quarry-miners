@@ -13,7 +13,11 @@ local blacklist = {
 	dirt = {name="minecraft:dirt"},
 	gravel = {name="minecraft:gravel"},
 	sand = {name="minecraft:sand"},
-	bedrock = {name="minecraft:bedrock"}
+	bedrock = {name="minecraft:bedrock"},
+	prjredmarble = {name="ProjRed|Exploration:projectred.exploration.stone",metadata=0},
+	chisellimestone = {name="chisel:chisel.limestone"},
+	chiselmarble = {name="chisel:chisel.marble"},
+	railcraftquarriedstone = {name="Railcraft:cube",metadata=7}
 }
 
 -- list of liquids that can be used as fuel
