@@ -1,0 +1,69 @@
+assert((fs.exists(".sq/relgo") and fs.exists(".sq/config") and fs.exists(".sq/miner") and fs.exists(".sq/json") and fs.exists(".sq/swarm")), "Missing required files - please redownload")
+assert(fs.exists("disk"),"Please attach a disk drive to install files to!")
+
+local deploy_code = [[
+assert(turtle, "This disk is to deploy turtle swarm miners!")
+print("Deploy this turtle as miner? [Y/N]")
+local _,key = os.pullEvent("char")
+if key == "y" then
+	print("Copying files...")
+	fs.copy("disk/relgo","relgo")
+	fs.copy("disk/config","config")
+	fs.copy("disk/miner","miner")
+	fs.copy("disk/json","json")
+	fs.copy("disk/swarm","swarm")
+	fs.copy("disk/.swarmconfig",".swarmconfig")
+	local f = fs.open("startup","w")
+	f.write("shell.run('swarm')")
+	f.close()
+	print("Installation complete; starting miner")
+	shell.run("swarm")
+end
+]]
+
+print("Starting swarm quarry setup")
+os.loadAPI(".sq/config")
+os.loadAPI(".sq/json")
+if fs.exists("disk/.swarmconfig") then fs.delete("disk/.swarmconfig") end
+config.init("disk/.swarmconfig")
+print("Please enter the address of the host server below.")
+write("> ")
+local host = read()
+config.set("host",host)
+print("What should the name of the swam be?")
+write("> ")
+local name = read()
+config.set("swarmname",name)
+print("How wide should the quarry be, in blocks?")
+write("> ")
+local w = tonumber(read())
+print("How long should the quarry be, in blocks?")
+write("> ")
+local h = tonumber(read())
+print("Contacting server...")
+local h = http.get(host .. "/swarm/" .. name .. "/create?w=" .. w .. "&h=" .. h)
+if h then
+	local response = json.decode(h.readAll())
+	if response.success then
+		print("Success!")
+		print(response.shafts .. " shafts will be mined.")
+		print("Please wait while final setup tasks are performed.")
+		fs.copy(".sq/relgo","disk/relgo")
+		fs.copy(".sq/config","disk/config")
+		fs.copy(".sq/miner","disk/miner")
+		fs.copy(".sq/json","disk/json")
+		fs.copy(".sq/swarm","disk/swarm")
+		local f = fs.open("disk/startup","w")
+		f.write(deploy_code)
+		f.close()
+		print("Setup complete!")
+		print("Please follow the instructions in the forum thread to deploy miners using the disk.")
+	else
+		print("Oh no!")
+		print("An error occurred!")
+		print("Error: " .. response.error)
+	end
+else
+	print("Hmm, I can't reach the server.")
+	print("Are you sure you set it up correctly and it is running?")
+end
