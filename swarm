@@ -1,0 +1,206 @@
+assert(turtle, "This program is for turtles only")
+
+local function loadAPI(file)
+	local e = {}
+	setmetatable(e, {__index = _G})
+	local api
+	if load then
+		-- 5.2 compat
+		local f = fs.open(file,"r")
+		local data = f.readAll()
+		f.close()
+		api = load(data,fs.getName(file),nil,e)
+	else
+		-- 5.1 only
+		api = loadfile(file)
+		setfenv(api, e)
+	end
+	local ok, err = pcall(api)
+	if ok then
+		local out = {}
+		for k,v in pairs(e) do
+			out[k] = v
+		end
+		return out
+	else
+		return false, err
+	end
+end
+
+local go, err = loadAPI("relgo")
+if go then
+	_G.go = go
+else
+	error("failed to load api: "..err)
+end
+
+local config, err = loadAPI("config")
+if config then
+	_G.config = config
+else
+	error("failed to load api: "..err)
+end
+
+local miner, err = loadAPI("miner")
+if miner then
+	_G.miner = miner
+else
+	error("failed to load api: "..err)
+end
+
+local json, err = loadAPI("json")
+if json then
+	_G.json = json
+else
+	error("failed to load api: "..err)
+end
+
+if (go and config and miner and json) then
+	print("All APIs loaded successfully.")
+else
+	error("Failed to load APIs!")
+end
+
+config.init(".swarmconfig")
+
+function getShaft(host, swarmName, authtoken)
+	local request = ""
+	if authtoken then
+		request = host .. "/swarm/" .. swarmName .."/claimshaft/?token=" .. authtoken .. "&id=" .. os.getComputerID()
+	else
+		request = host .. "/swarm/" .. swarmName .."/claimshaft/?id=" .. os.getComputerID()
+	end
+	local data = http.get(request)
+	if data then
+		local t = json.decode(data.readAll())
+		if t.success then return t.success else
+			return false, t.error
+		end
+	else
+		return false, "no response"
+	end
+end
+
+function markFinished(shaft, host, swarmName, authtoken)
+	local request = ""
+	if authtoken then
+		request = host .. "/swarm/" .. swarmName .."/finishedshaft/?token=" .. authtoken .. "&x=" .. shaft.x .. "&z=" .. shaft.z
+	else
+		request = host .. "/swarm/" .. swarmName .."/finishedshaft/?x=" .. shaft.x .. "&z=" .. shaft.z
+	end
+	local data = http.get(request)
+	if data then
+		local t = json.decode(data.readAll())
+		if t.success then return t.success else
+			return false, t.error
+		end
+	else
+		return false, "no response"
+	end
+end
+
+local function dropoff(all)
+	for i = 1, 16 do
+		if turtle.getItemDetail(i) and not (turtle.getItemDetail(i).name == "minecraft:bucket" and all) then
+			turtle.select(i)
+			turtle.drop(64)
+		end
+	end
+end
+
+if config.get("host") and config.get("dropoff") and config.get("swarmname") then
+	-- local host = config.get("host")
+	-- local dropoff = config.get("dropoff")
+	-- local name = config.get("swarmname")
+	-- resume states:
+	-- prep - preparing to mine new shaft
+	-- mining - currently mining a shaft(also needs coords)
+	-- done - mining is complete.
+	--local ystart = config.get("y",64)
+	while true do
+		if config.get("state", "prep") == "prep" then
+			if not config.get("shaft") then
+				-- get a shaft
+				print("Getting shaft info...")
+				local shaft, err = getShaft(config.get("host"),config.get("swarmname"),config.get("authtoken"))
+				if shaft then
+					config.set("shaft", shaft)
+				else
+					if err == "no response" then
+						print("Server not responding. Retrying in 120 seconds.")
+						sleep(120)
+					elseif err == "no remaining shafts" then
+						print("All shafts mined.")
+						config.set("state","done")
+					end
+				end
+			end
+			if config.get("shaft") then
+				local shaft = config.get("shaft")
+
+				-- prepare to mine the shaft
+				print("Preparing to mine at "..shaft.x..", "..shaft.z)
+
+				-- check if turtle has enough fuel
+				local cpos = go.getPos()
+				local needed = config.get("fuelbuffer",100)
+				needed = needed + go.fuelTo(shaft.x, 64, shaft.z)
+				needed = needed + 70 * 2 -- for actual mining - assume 70 depth (for extra buffer)
+				needed = needed + go.fuelTo(config.get("dropoff"),{x=shaft.x,y=64,z=shaft.z})
+				if turtle.getFuelLevel() < needed then
+					print("Getting more fuel")
+					go.goto(config.get("dropoff"))
+					miner.tossJunk("down")
+					dropoff()
+					while (turtle.getFuelLevel() <= needed) do
+						turtle.suckUp(64)
+						miner.refuel(needed)
+					end
+					dropoff()
+				end
+				local freeslots = 0
+				for i = 1, 16 do
+					if turtle.getItemCount(i) == 0 then
+						freeslots = freeslots + 1
+					end
+				end
+				if freeslots < config.get("freeslots",10) then
+					print("Dropping off items")
+					go.goto(config.get("dropoff"))
+					miner.tossJunk("down")
+					dropoff()
+				end
+				print("Going to shaft location")
+				go.goto(shaft.x,64,shaft.z)
+				config.set("state","mining")
+			end
+		end
+		if config.get("state", "prep") == "mining" then
+			miner.mineShaft()
+			miner.tossJunk("down")
+			markFinished(config.get("shaft"), config.get("host"), config.get("swarmname"), config.get("authtoken"))
+			config.set("shaft",nil)
+			config.set("state","prep")
+		end
+		if config.get("state","prep") == "done" then
+			-- mining complete, clean up and uninstall
+			print("Quarry complete, dropping off items and uninstalling.")
+			go.goto(config.get("dropoff"))
+			miner.tossJunk("down")
+			dropoff()
+			-- uninstall
+			fs.delete(".position")
+			fs.delete(".swarmconfig")
+			fs.delete("miner")
+			fs.delete("json")
+			fs.delete("relgo")
+			fs.delete("config")
+			fs.delete("startup")
+			fs.delete("swarm")
+			print("Uninstall completed.")
+			break
+		end
+	end
+else
+	error("Corrupt or missing config file, program cannot continue")
+end
