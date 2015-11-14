@@ -108,6 +108,12 @@ function fuelTo(x, y, z, fromPos)
 end
 
 function canReach(x, y, z)
+	if type(x) == "table" then
+		y = x.y
+		z = x.z
+		f = x.f
+		x = x.x
+	end
 	if not (pos.x and pos.y and pos.z) then
 		return false, "cannot determine position"
 	end

@@ -148,6 +148,13 @@ if config.get("host") and config.get("dropoff") and config.get("swarmname") then
 				needed = needed + 70 * 2 -- for actual mining - assume 70 depth (for extra buffer)
 				needed = needed + go.fuelTo(config.get("dropoff"),{x=shaft.x,y=64,z=shaft.z})
 				if turtle.getFuelLevel() < needed then
+					if not go.canReach(config.get("dropoff")) then
+						print("Please add fuel!")
+						while not go.canReach(config.get("dropoff")) do
+							os.pullEvent()
+							miner.refuel(go.fuelTo(config.get("dropoff")))
+						end
+					end
 					print("Getting more fuel")
 					go.goto(config.get("dropoff"))
 					miner.tossJunk("down")
