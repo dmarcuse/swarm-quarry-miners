@@ -48,12 +48,18 @@ if h then
 		print("Success!")
 		print(response.shafts .. " shafts will be mined.")
 		print("Please wait while final setup tasks are performed.")
+		if fs.exists("disk/relgo") then fs.delete("disk/relgo") end
 		fs.copy(".sq/relgo","disk/relgo")
+		if fs.exists("disk/config") then fs.delete("disk/config") end
 		fs.copy(".sq/config","disk/config")
+		if fs.exists("disk/miner") then fs.delete("disk/miner") end
 		fs.copy(".sq/miner","disk/miner")
+		if fs.exists("disk/json") then fs.delete("disk/json") end
 		fs.copy(".sq/json","disk/json")
+		if fs.exists("disk/swarm") then fs.delete("disk/swarm") end
 		fs.copy(".sq/swarm","disk/swarm")
 		config.set("dropoff",{x=0,y=64,z=-3,f=2})
+		if fs.exists("disk/startup") then fs.delete("disk/startup") end
 		local f = fs.open("disk/startup","w")
 		f.write(deploy_code)
 		f.close()
