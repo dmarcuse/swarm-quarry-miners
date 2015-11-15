@@ -199,7 +199,7 @@ if config.get("host") and config.get("dropoff") and config.get("swarmname") then
 			print("Quarry complete, dropping off items and uninstalling.")
 			go.goto(config.get("dropoff"))
 			miner.tossJunk("down")
-			dropoff()
+			dropoff(true)
 			-- uninstall
 			fs.delete(".position")
 			fs.delete(".swarmconfig")
