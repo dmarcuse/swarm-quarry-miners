@@ -17,9 +17,9 @@ local blacklist = {
 	prjredmarble = {name="ProjRed|Exploration:projectred.exploration.stone",metadata=0},
 	chisellimestone = {name="chisel:limestone"},
 	chiselmarble = {name="chisel:marble"},
-	chiseldiorite = {name="chisel:diorite"}
-	chiselgranite = {name="chisel:granite"}
-	chiselandesite = {name="chisel:andesite"}
+	chiseldiorite = {name="chisel:diorite"},
+	chiselgranite = {name="chisel:granite"},
+	chiselandesite = {name="chisel:andesite"},
 	railcraftquarriedstone = {name="Railcraft:cube",metadata=7}
 }
 
