@@ -37,6 +37,7 @@ end
 local config, err = loadAPI("config")
 if config then
 	_G.config = config
+	config.init(".swarmconfig")
 else
 	error("failed to load api: "..err)
 end
@@ -61,7 +62,14 @@ else
 	error("Failed to load APIs!")
 end
 
-config.init(".swarmconfig")
+if config.get("autoname",true) then
+	-- set turtle label automatically to prevent fuel loss on break
+	if not os.getComputerLabel() then
+		local lbl = "turtle_"..os.getComputerID()
+		os.setComputerLabel(lbl)
+		print("Computer label set to "..lbl)
+	end
+end
 
 function getShaft(host, swarmName, authtoken)
 	local request = ""
@@ -120,7 +128,7 @@ if config.get("host") and config.get("dropoff") and config.get("swarmname") then
 	-- resume states:
 	-- prep - preparing to mine new shaft
 	-- mining - currently mining a shaft(also needs coords)
-	-- done - mining is complete.
+	-- done - mining is complete
 	--local ystart = config.get("y",64)
 	while true do
 		if config.get("state", "prep") == "prep" then
@@ -148,10 +156,11 @@ if config.get("host") and config.get("dropoff") and config.get("swarmname") then
 
 				-- check if turtle has enough fuel
 				local cpos = go.getPos()
-				local needed = config.get("fuelbuffer",100)
+				local needed = config.get("fuelspare",25)
 				needed = needed + go.fuelTo(shaft.x, 64, shaft.z+2)
-				needed = needed + 70 * 2 -- for actual mining - assume 70 depth (for extra buffer)
+				needed = needed + 70 * 2 -- for actual mining - assume 70 depth
 				needed = needed + go.fuelTo(config.get("dropoff"),{x=shaft.x,y=64,z=shaft.z+2})
+				miner.refuel(needed)
 				if turtle.getFuelLevel() < needed then
 					if not go.canReach(config.get("dropoff")) then
 						print("Please add fuel!")
@@ -166,7 +175,7 @@ if config.get("host") and config.get("dropoff") and config.get("swarmname") then
 					dropoff()
 					while (turtle.getFuelLevel() <= needed) do
 						turtle.suckUp(64)
-						miner.refuel(needed)
+						miner.refuel(needed + config.get("fuelbuffer",250))
 					end
 					dropoff()
 				end
@@ -183,14 +192,27 @@ if config.get("host") and config.get("dropoff") and config.get("swarmname") then
 					dropoff()
 				end
 				print("Going to shaft location")
-				go.goto(shaft.x,64,shaft.z+2)
+				local pos = go.getPos()
+				local dropoff = config.get("dropoff")
+				if pos.x == dropoff.x and pos.z == dropoff.z then
+					go.goto(nil,nil,pos.z+1) -- don't break fuel chest
+				end
+				go.goto(shaft.x,65,shaft.z+2) -- attempt to prevent turtles breaking eachother by having turtles use different Y levels
+				go.goto(nil,64,nil)
 				config.set("state","mining")
 			end
 		end
 		if config.get("state", "prep") == "mining" then
 			miner.mineShaft()
 			miner.tossJunk("down")
-			markFinished(config.get("shaft"), config.get("host"), config.get("swarmname"), config.get("authtoken"))
+			local ok, err = markFinished(config.get("shaft"), config.get("host"), config.get("swarmname"), config.get("authtoken"))
+			if not ok and err == "no response" then
+				while not ok and err == "no response" do
+					print("Server not responding. Retrying in 120 seconds.")
+					sleep(120)
+					ok, err = markFinished(config.get("shaft"), config.get("host"), config.get("swarmname"), config.get("authtoken"))
+				end
+			end
 			config.set("shaft",nil)
 			config.set("state","prep")
 		end

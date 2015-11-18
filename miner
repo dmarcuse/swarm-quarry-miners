@@ -4,24 +4,7 @@ assert(config, "This api requires the 'config' api")
 
 
 -- list of junk blocks to avoid mining and toss if necessary
-local blacklist = {
-	cobblestone = {name="minecraft:cobblestone"},
-	stone = {name="minecraft:stone"},
-	sandstone = {name="minecraft:sandstone"},
-	grass = {name="minecraft:grass"},
-	tallgrass = {name="minecraft:tallgrass"},
-	dirt = {name="minecraft:dirt"},
-	gravel = {name="minecraft:gravel"},
-	sand = {name="minecraft:sand"},
-	bedrock = {name="minecraft:bedrock"},
-	prjredmarble = {name="ProjRed|Exploration:projectred.exploration.stone",metadata=0},
-	chisellimestone = {name="chisel:limestone"},
-	chiselmarble = {name="chisel:marble"},
-	chiseldiorite = {name="chisel:diorite"},
-	chiselgranite = {name="chisel:granite"},
-	chiselandesite = {name="chisel:andesite"},
-	railcraftquarriedstone = {name="Railcraft:cube",metadata=7}
-}
+local blacklist = config.get("block_blacklist")
 
 -- list of liquids that can be used as fuel
 local liquidfuels = {

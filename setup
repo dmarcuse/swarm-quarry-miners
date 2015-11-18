@@ -1,5 +1,39 @@
-assert((fs.exists(".sq/relgo") and fs.exists(".sq/config") and fs.exists(".sq/miner") and fs.exists(".sq/json") and fs.exists(".sq/swarm")), "Missing required files - please redownload")
 assert(fs.exists("disk"),"Please attach a disk drive to install files to!")
+
+local copyfiles = {
+	"relgo",
+	"config",
+	"miner",
+	"json",
+	"swarm"
+}
+
+local blacklist = {
+	{name="minecraft:cobblestone"},
+	{name="minecraft:stone"},
+	{name="minecraft:sandstone"},
+	{name="minecraft:grass"},
+	{name="minecraft:tallgrass"},
+	{name="minecraft:dirt"},
+	{name="minecraft:gravel"},
+	{name="minecraft:sand"},
+	{name="minecraft:bedrock"},
+	{name="minecraft:snow_layer"},
+	{name="minecraft:ice"},
+	{name="ProjRed|Exploration:projectred.exploration.stone",metadata=0},
+	{name="chisel:limestone"},
+	{name="chisel:chisel.limestone"},
+	{name="chisel:marble"},
+	{name="chisel:chisel.marble"},
+	{name="chisel:diorite"},
+	{name="chisel:granite"},
+	{name="chisel:andesite"},
+	{name="Railcraft:cube",metadata=7}
+}
+
+for i,v in ipairs(copyfiles) do
+	assert(fs.exists(".sq/"..v),"Missing required file: "..v.. " - please redownload the setup.")
+end
 
 local deploy_code = [[
 assert(turtle, "This disk is to deploy turtle swarm miners!")
@@ -21,11 +55,12 @@ if key == "y" then
 end
 ]]
 
-print("Starting swarm quarry setup")
 os.loadAPI(".sq/config")
 os.loadAPI(".sq/json")
 if fs.exists("disk/.swarmconfig") then fs.delete("disk/.swarmconfig") end
 config.init("disk/.swarmconfig")
+term.clear()
+term.setCursorPos(1,1)
 print("Please enter the address of the host server below.")
 write("> ")
 local host = read()
@@ -36,10 +71,16 @@ local name = read()
 config.set("swarmname",name)
 print("How wide should the quarry be, in blocks?")
 write("> ")
-local w = tonumber(read())
+local w = tonumber(read()) or 10
 print("How long should the quarry be, in blocks?")
 write("> ")
-local h = tonumber(read())
+local h = tonumber(read()) or 10
+print("How much extra fuel should turtles keep when getting fuel?")
+print("The higher the number, the more efficient the fuel usage, but higher fuel requirements. Defaults to 250.")
+write("> ")
+local fb = tonumber(read()) or 250
+config.set("fuelbuffer",fb)
+config.set("fuelspare",25)
 print("Contacting server...")
 local h = http.get(host .. "/swarm/" .. name .. "/create?w=" .. w .. "&h=" .. h)
 if h then
@@ -47,18 +88,15 @@ if h then
 	if response.success then
 		print("Success!")
 		print(response.shafts .. " shafts will be mined.")
-		print("Please wait while final setup tasks are performed.")
-		if fs.exists("disk/relgo") then fs.delete("disk/relgo") end
-		fs.copy(".sq/relgo","disk/relgo")
-		if fs.exists("disk/config") then fs.delete("disk/config") end
-		fs.copy(".sq/config","disk/config")
-		if fs.exists("disk/miner") then fs.delete("disk/miner") end
-		fs.copy(".sq/miner","disk/miner")
-		if fs.exists("disk/json") then fs.delete("disk/json") end
-		fs.copy(".sq/json","disk/json")
-		if fs.exists("disk/swarm") then fs.delete("disk/swarm") end
-		fs.copy(".sq/swarm","disk/swarm")
+		for i,v in ipairs(copyfiles) do
+			if fs.exists("disk/"..v) then
+				fs.delete("disk/"..v)
+			end
+			fs.copy(".sq/"..v,"disk/"..v)
+		end
 		config.set("dropoff",{x=0,y=64,z=-3,f=2})
+		config.set("block_blacklist",blacklist)
+		config.set("autoname",true)
 		if fs.exists("disk/startup") then fs.delete("disk/startup") end
 		local f = fs.open("disk/startup","w")
 		f.write(deploy_code)
